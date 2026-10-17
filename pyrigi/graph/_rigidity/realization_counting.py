@@ -144,7 +144,6 @@ def number_of_realizations(  # noqa: C901
     # Check trivial cases for higher dimensions
     # currently just for internal use to resolve default in higher dimensions if possible
     if algorithm == "checktrivial":
-
         # reduce by deleting vertices of degree = dim
         # :prf:ref:`lem-realization-0-extension`
         G = deepcopy(graph)
@@ -498,6 +497,43 @@ def _number_of_plane_realizations_min_rigid_dim_2(graph: nx.Graph) -> int:
     )
 
 
+def _has_loop_after_split(M: list, N: list) -> bool:
+    """
+    Whether contracting M on the left (resp. N on the right) turns
+    some remaining biedge into a loop, i.e. the term of this split is zero.
+    """
+    left = nx.utils.UnionFind()
+    for be in M:
+        left.union(*be[0])
+    right = nx.utils.UnionFind()
+    for be in N:
+        right.union(*be[1])
+    return any(left[be[0][0]] == left[be[0][1]] for be in N[1:]) or any(
+        right[be[1][0]] == right[be[1][1]] for be in M[1:]
+    )
+
+
+def _splits_without_loops(bigraph: list):
+    """
+    Yield pairs (M, N) with M ∪ N = bigraph and M ∩ N = {bigraph[0]}
+    whose contractions have no loops. Since adding biedges to M or N
+    only merges components, a partial split with a loop can be discarded
+    together with all its extensions.
+    """
+    selected_edge, rest = bigraph[0], bigraph[1:]
+
+    def extend(i: int, M: list, N: list):
+        if _has_loop_after_split(M, N):
+            return
+        if i == len(rest):
+            yield M, N
+            return
+        yield from extend(i + 1, [*M, rest[i]], N)
+        yield from extend(i + 1, M, [*N, rest[i]])
+
+    yield from extend(0, [selected_edge], [selected_edge])
+
+
 def _number_of_plane_realizations_min_rigid_dim_2_rec(
     bigraph: list, first: bool = False
 ) -> int:
@@ -527,16 +563,9 @@ def _number_of_plane_realizations_min_rigid_dim_2_rec(
         result += _number_of_plane_realizations_min_rigid_dim_2_rec(
             _bigraph_delete_contract(bigraph, [selected_edge])
         )
-
-    subsets = more_itertools.powerset(bigraph[1:])
-    for sub in subsets:
-        if len(sub) == 0 or len(sub) == len(bigraph) - 1:
+    for sub_M, sub_N in _splits_without_loops(bigraph):
+        if len(sub_M) == 1 or len(sub_N) == 1:
             continue
-        sub_M = list(sub)
-        sub_M.append(selected_edge)
-        sub_N = [be for be in bigraph if be not in sub_M]
-        sub_N.append(selected_edge)
-
         sub_big_M = _bigraph_contract_delete(bigraph, sub_M)
         sub_big_N = _bigraph_delete_contract(bigraph, sub_N)
         if _bigraph_is_pseudo_laman(sub_big_N) and _bigraph_is_pseudo_laman(sub_big_M):
