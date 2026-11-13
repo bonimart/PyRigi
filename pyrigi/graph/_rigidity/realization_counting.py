@@ -517,25 +517,25 @@ def _number_of_plane_realizations_min_rigid_dim_2_rec(
         return 0
     if len(bigraph) == 1:
         return 1
-    selected_edge = bigraph[0]
+    selected_edge = 0
     result = _number_of_plane_realizations_min_rigid_dim_2_rec(
-        _bigraph_contract_delete(bigraph, [selected_edge])
+        _bigraph_contract_delete(bigraph, {selected_edge})
     )
     if first:
         result *= 2
     else:
         result += _number_of_plane_realizations_min_rigid_dim_2_rec(
-            _bigraph_delete_contract(bigraph, [selected_edge])
+            _bigraph_delete_contract(bigraph, {selected_edge})
         )
 
-    subsets = more_itertools.powerset(bigraph[1:])
+    whole_set = set(range(len(bigraph) + 1))
+    subsets = more_itertools.powerset(range(1, len(bigraph) + 1))
     for sub in subsets:
         if len(sub) == 0 or len(sub) == len(bigraph) - 1:
             continue
-        sub_M = list(sub)
-        sub_M.append(selected_edge)
-        sub_N = [be for be in bigraph if be not in sub_M]
-        sub_N.append(selected_edge)
+        sub_M = set(sub)
+        sub_N = whole_set - sub_M
+        sub_M.add(selected_edge)
 
         sub_big_M = _bigraph_contract_delete(bigraph, sub_M)
         sub_big_N = _bigraph_delete_contract(bigraph, sub_N)
@@ -575,7 +575,7 @@ def _rank(edges: list) -> int:
     return rank
 
 
-def _contract(edges: list, select: list) -> list:
+def _contract(edges: list, select: set) -> list:
     """
     Contract edges of a graph.
 
@@ -595,12 +595,16 @@ def _contract(edges: list, select: list) -> list:
         Edges to be contracted.
     """
     union_find = UnionFind()
-    for u, v in select:
-        union_find.join(u, v)
-    return [[union_find.find(u), union_find.find(v)] for u, v in edges]
+    for i in select:
+        union_find.join(*edges[i])
+    return [
+        [union_find.find(u), union_find.find(v)]
+        for i, (u, v) in enumerate(edges)
+        if i not in select
+    ]
 
 
-def _remove_biedges(biedges: list, select: list) -> list:
+def _remove_biedges(biedges: list, select: set) -> list:
     """
     Remove selected biedges of a bigraph.
 
@@ -615,29 +619,26 @@ def _remove_biedges(biedges: list, select: list) -> list:
     select
         Subset of biedges to be removed.
     """
-    rest = copy(biedges)
-    for be in select:
-        rest.remove(be)
-    return rest
+    return [biedge for i, biedge in enumerate(biedges) if i not in select]
 
 
-def _bigraph_contract_delete(biedges: list, select: list) -> list:
+def _bigraph_contract_delete(biedges: list, select: set) -> list:
     """
     Contract edges of a bigraph on the left
     and delete on the right.
     """
     rest = _remove_biedges(biedges, select)
-    left = _contract([be[0] for be in rest], [be[0] for be in select])
+    left = _contract([be[0] for be in rest], select)
     return [[ell, be[1]] for ell, be in zip(left, rest, strict=True)]
 
 
-def _bigraph_delete_contract(biedges: list, select: list) -> list:
+def _bigraph_delete_contract(biedges: list, select: set) -> list:
     """
     Contract edges of a bigraph on the right
     and delete on the left.
     """
     rest = _remove_biedges(biedges, select)
-    right = _contract([be[1] for be in rest], [be[1] for be in select])
+    right = _contract([be[1] for be in rest], select)
     return [[be[0], r] for be, r in zip(rest, right, strict=True)]
 
 
