@@ -627,9 +627,14 @@ def _bigraph_contract_delete(biedges: list, select: set) -> list:
     Contract edges of a bigraph on the left
     and delete on the right.
     """
-    rest = _remove_biedges(biedges, select)
-    left = _contract([be[0] for be in rest], select)
-    return [[ell, be[1]] for ell, be in zip(left, rest, strict=True)]
+    return [
+        [ell, be[1]]
+        for ell, be in zip(
+            _contract([be[0] for be in biedges], select),
+            _remove_biedges(biedges, select),
+            strict=True,
+        )
+    ]
 
 
 def _bigraph_delete_contract(biedges: list, select: set) -> list:
@@ -637,9 +642,14 @@ def _bigraph_delete_contract(biedges: list, select: set) -> list:
     Contract edges of a bigraph on the right
     and delete on the left.
     """
-    rest = _remove_biedges(biedges, select)
-    right = _contract([be[1] for be in rest], select)
-    return [[be[0], r] for be, r in zip(rest, right, strict=True)]
+    return [
+        [be[0], r]
+        for be, r in zip(
+            _remove_biedges(biedges, select),
+            _contract([be[1] for be in biedges], select),
+            strict=True,
+        )
+    ]
 
 
 def _biedges_have_loop(biedges: list) -> bool:
