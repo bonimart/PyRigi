@@ -528,8 +528,8 @@ def _number_of_plane_realizations_min_rigid_dim_2_rec(
             _bigraph_delete_contract(bigraph, {selected_edge})
         )
 
-    whole_set = set(range(len(bigraph) + 1))
-    subsets = more_itertools.powerset(range(1, len(bigraph) + 1))
+    whole_set = set(range(len(bigraph)))
+    subsets = more_itertools.powerset(range(1, len(bigraph)))
     for sub in subsets:
         if len(sub) == 0 or len(sub) == len(bigraph) - 1:
             continue
